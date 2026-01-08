@@ -34,6 +34,10 @@ jobs:
           VCODE=$(echo "$VERSION" | awk -F. '{printf "%d%02d%02d", $1, $2, $3}')
           sed -i "s/^versionCode=.*/versionCode=$VCODE/" module.prop
 
+      - name: Fix line endings
+        run: |
+          sed -i 's/\r$//' module.prop service.sh config.sh README.md
+
       - name: Create module zip
         run: |
           zip -0 stayGMS-${{ steps.version.outputs.version }}.zip \
