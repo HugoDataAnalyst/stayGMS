@@ -36,22 +36,23 @@ jobs:
 
       - name: Create module zip
         run: |
-          zip -r gms-version-locker-${{ steps.version.outputs.version }}.zip \
+          zip stayGMS-${{ steps.version.outputs.version }}.zip \
             module.prop \
             service.sh \
-            config.sh
+            config.sh \
+            README.md
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gms-version-locker-${{ steps.version.outputs.version }}
-          path: gms-version-locker-*.zip
+          name: stayGMS-${{ steps.version.outputs.version }}
+          path: stayGMS-*.zip
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
-          files: gms-version-locker-*.zip
+          files: stayGMS-*.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
