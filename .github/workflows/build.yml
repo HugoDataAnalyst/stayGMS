@@ -36,11 +36,12 @@ jobs:
 
       - name: Fix line endings
         run: |
-          sed -i 's/\r$//' module.prop service.sh config.sh README.md
+          sed -i 's/\r$//' module.prop service.sh config.sh README.md META-INF/com/google/android/*
 
       - name: Create module zip
         run: |
-          zip -0 stayGMS-${{ steps.version.outputs.version }}.zip \
+          zip -r stayGMS-${{ steps.version.outputs.version }}.zip \
+            META-INF \
             module.prop \
             service.sh \
             config.sh \
