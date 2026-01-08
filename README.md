@@ -35,7 +35,7 @@ The config file is created automatically on first boot. After editing, reboot fo
 
 Check the script execution logs at:
 ```
-/data/local/tmp/fgms.log
+/data/local/tmp/stayGMS.log
 ```
 
 ## How it works

@@ -1,8 +1,11 @@
 #!/system/bin/sh
 MODDIR="${0%/*}"
-LOGFILE="/data/local/tmp/fgms.log"
+LOGFILE="/data/local/tmp/stayGMS.log"
 
-echo "$(date): GMS Lock script started" >> $LOGFILE
+echo "$(date): stayGMS script started" >> $LOGFILE
+
+# Wait for system to be ready (GMS needs time to initialize)
+sleep 30
 
 # Load config file from /data/local/tmp (user-editable location)
 CONFIG_FILE="/data/local/tmp/stayGMS_config.sh"
@@ -23,28 +26,34 @@ fi
 # Default target version if not set in config
 TARGET="${TARGET_VERSION:-25.49.32}"
 
-# Get both versions
-VERSION_DATA=$(dumpsys package com.google.android.gms | grep "codePath=/data/app" -A 1 | grep versionName | grep -oP '\d+\.\d+\.\d+' | head -1)
-VERSION_SYSTEM=$(dumpsys package com.google.android.gms | grep "codePath=/product/priv-app" -A 1 | grep versionName | grep -oP '\d+\.\d+\.\d+' | head -1)
+# Get GMS package info
+GMS_DUMP=$(dumpsys package com.google.android.gms)
 
-# Determine which version is active (higher one)
-if [ -z "$VERSION_DATA" ]; then
-    ACTIVE_VERSION="$VERSION_SYSTEM"
-elif [ -z "$VERSION_SYSTEM" ]; then
-    ACTIVE_VERSION="$VERSION_DATA"
+# Check if user-installed version exists (in /data/app)
+HAS_USER_VERSION=$(echo "$GMS_DUMP" | grep -c "codePath=/data/app")
+
+# Get both versions (first = user/data, second = system/product)
+VERSION_USER=$(echo "$GMS_DUMP" | grep "versionName=" | head -1 | sed 's/.*versionName=//' | cut -d' ' -f1)
+VERSION_SYSTEM=$(echo "$GMS_DUMP" | grep "versionName=" | tail -1 | sed 's/.*versionName=//' | cut -d' ' -f1)
+
+echo "$(date): User version: '$VERSION_USER', System version: '$VERSION_SYSTEM'" >> $LOGFILE
+echo "$(date): Has user-installed update: $HAS_USER_VERSION" >> $LOGFILE
+
+# Safety check: only proceed if system version is at or below target
+# This prevents boot loops if even the system version exceeds target
+if [ -n "$VERSION_SYSTEM" ] && [ "$VERSION_SYSTEM" \> "$TARGET" ]; then
+    echo "$(date): WARNING - System version $VERSION_SYSTEM exceeds target $TARGET. Cannot downgrade system. Skipping." >> $LOGFILE
 else
-    ACTIVE_VERSION=$([ "$VERSION_DATA" \> "$VERSION_SYSTEM" ] && echo "$VERSION_DATA" || echo "$VERSION_SYSTEM")
-fi
-
-echo "Active: $ACTIVE_VERSION, System: $VERSION_SYSTEM, Data: $VERSION_DATA" >> $LOGFILE
-
-# If active version is above target, uninstall user version and reboot
-if [ -n "$ACTIVE_VERSION" ] && [ "$ACTIVE_VERSION" \> "$TARGET" ]; then
-    echo "$(date): Version $ACTIVE_VERSION exceeds target $TARGET. Uninstalling user version..." >> $LOGFILE
-    pm uninstall --user 0 com.google.android.gms
-    echo "$(date): Rebooting..." >> $LOGFILE
-    reboot
-    exit 0
+    # Only uninstall if there's a user-installed version AND it exceeds target
+    if [ "$HAS_USER_VERSION" -gt 0 ] && [ -n "$VERSION_USER" ] && [ "$VERSION_USER" \> "$TARGET" ]; then
+        echo "$(date): User version $VERSION_USER exceeds target $TARGET. Uninstalling user update..." >> $LOGFILE
+        pm uninstall --user 0 com.google.android.gms
+        echo "$(date): Rebooting to apply system version..." >> $LOGFILE
+        reboot
+        exit 0
+    else
+        echo "$(date): Version OK. User: '$VERSION_USER', Target: '$TARGET'" >> $LOGFILE
+    fi
 fi
 
 # Disable update services to prevent auto-updates
@@ -60,4 +69,4 @@ if [ $? -eq 0 ]; then
     echo "$(date): Disabled SystemUpdateService" >> $LOGFILE
 fi
 
-echo "$(date): Script completed successfully. Current version: $ACTIVE_VERSION" >> $LOGFILE
+echo "$(date): Script completed successfully. Active version: $VERSION_USER" >> $LOGFILE
