@@ -1,0 +1,6 @@
+id=stay_gms
+name=stayGMS
+version=1.0
+versionCode=1
+author=https://github.com/HugoDataAnalyst/stayGMS
+description=Automatically lock Google Play Services to a target version and prevent auto-updates

@@ -1,23 +1,35 @@
-# GMS Version Locker
+# stayGMS
 
-A Magisk module that automatically locks Google Play Services to version 25.49.32 and prevents auto-updates.
+A Magisk module that automatically locks Google Play Services to a target version and prevents auto-updates.
 
 ## What it does
 
 1. **Checks on every boot** which version of GMS is installed
-2. **If the version exceeds 25.49.32**, it automatically:
+2. **If the version exceeds the target** (default: 25.49.32), it automatically:
    - Uninstalls the user-installed version (from `/data/app/`)
-   - Falls back to the system version (23.37.17 from `/product/priv-app/`)
+   - Falls back to the system version
    - Triggers a reboot
-3. **Disables update services** that would otherwise auto-update GMS:
-   - `com.google.android.gms.update.SystemUpdatePersistentListenerService`
-   - `com.google.android.gms.update.SystemUpdateService`
+3. **Disables update services** that would otherwise auto-update GMS
 
 ## Installation
 
-1. Download/zip the module files
+1. Download the latest release zip from [Releases](https://github.com/HugoDataAnalyst/stayGMS/releases)
 2. Flash via Magisk Manager
 3. Reboot
+
+## Configuration
+
+To change the target GMS version, edit the config file:
+```
+/data/local/tmp/stayGMS_config.sh
+```
+
+Set your desired version:
+```sh
+TARGET_VERSION="25.49.32"
+```
+
+The config file is created automatically on first boot. After editing, reboot for changes to take effect.
 
 ## Logs
 
@@ -29,16 +41,7 @@ Check the script execution logs at:
 ## How it works
 
 - The script runs after boot completes (`service.sh`)
-- It compares the active GMS version against the target (25.49.32)
-- If both versions exist, it uses whichever is higher
-- If the active version is above the target, it uninstalls the user version and reboots
+- It compares the active GMS version against the target
+- If both system and user versions exist, it uses whichever is higher
+- If the active version exceeds the target, it uninstalls the user version and reboots
 - Update services are disabled to prevent future auto-updates
-
-## Customization
-
-To change the target version, edit `service.sh` and change:
-```bash
-TARGET="25.49.32"
-```
-
-to your desired version.

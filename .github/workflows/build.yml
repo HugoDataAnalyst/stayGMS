@@ -1,0 +1,57 @@
+name: Build Magisk Module
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'HugoDataAnalyst'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="dev"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version in module.prop
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i "s/^version=.*/version=$VERSION/" module.prop
+          # Increment versionCode based on version parts
+          VCODE=$(echo "$VERSION" | awk -F. '{printf "%d%02d%02d", $1, $2, $3}')
+          sed -i "s/^versionCode=.*/versionCode=$VCODE/" module.prop
+
+      - name: Create module zip
+        run: |
+          zip -r gms-version-locker-${{ steps.version.outputs.version }}.zip \
+            module.prop \
+            service.sh \
+            config.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gms-version-locker-${{ steps.version.outputs.version }}
+          path: gms-version-locker-*.zip
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: gms-version-locker-*.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
